@@ -21,8 +21,8 @@ function TweetScreen({ navigation }) {
             }}
           />
           <View>
-            <Text style={styles.tweetName}>Master Togan</Text>
-            <Text style={styles.tweetHandle}>@getRealdude</Text>
+            <Text style={styles.tweetName}>Ayomide Adebayo</Text>
+            <Text style={styles.tweetHandle}>@Aboki4code</Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity>

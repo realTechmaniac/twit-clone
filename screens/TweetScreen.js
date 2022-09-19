@@ -3,11 +3,17 @@ import { Entypo } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native";
 import { EvilIcons } from "@expo/vector-icons";
 
-function TweetScreen() {
+function TweetScreen({ navigation }) {
+  const navigateToProfile = () => {
+    navigation.navigate("Profile");
+  };
   return (
     <View style={styles.container}>
       <View style={styles.profileContainer}>
-        <TouchableOpacity style={styles.flexRow}>
+        <TouchableOpacity
+          style={styles.flexRow}
+          onPress={() => navigateToProfile()}
+        >
           <Image
             style={styles.avatar}
             source={{

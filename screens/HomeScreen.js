@@ -6,32 +6,89 @@ import {
   Image,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from "react-native";
-import { DATA } from "../data/tweets";
 import { EvilIcons } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
+import { useState, useEffect } from "react";
+import { formatDistanceToNowStrict } from "date-fns";
+import locale from "date-fns/locale/en-US";
+import formatDistance from "../utils/formatDistanceCustom";
+import axiosConfig from "../utils/axiosConfig";
 
 function HomeScreen({ navigation }) {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [isScrollEnd, setIsScrollEnd] = useState(false);
+
+  //SEND REQUEST UNMOUNT
+
+  useEffect(() => {
+    getAllTweets();
+  }, []);
+
+  const getAllTweets = () => {
+    axiosConfig
+      .get(`/tweets?page=${page}`)
+      .then((response) => {
+        if (page == 1) {
+          setData(response.data.data);
+        } else {
+          setData((prevData) => [...prevData, ...response.data.data]);
+        }
+
+        if (!response.data.next_page_url) {
+          setIsScrollEnd(true);
+        }
+
+        setIsLoading(false);
+        setIsRefreshing(false);
+      })
+      .catch((error) => {
+        console.log(error);
+        setIsLoading(false);
+        setIsRefreshing(false);
+      });
+  };
+
   const navigateToProfile = () => {
     navigation.navigate("Profile");
   };
 
-  const goToTweetScreen = () => {
-    navigation.navigate("Tweet");
+  const goToTweetScreen = (tweetId) => {
+    navigation.navigate("Tweet", {
+      id: tweetId,
+    });
   };
 
   const goToNewTweet = () => {
     navigation.navigate("New Tweet");
   };
-  const renderItemHandler = ({ item }) => {
+
+  function dateIsValid(date) {
+    return !Number.isNaN(new Date(date));
+  }
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    getAllTweets();
+  };
+
+  const handleEnd = () => {
+    console.log("At end");
+    setPage((prevPage) => prevPage + 1);
+    getAllTweets();
+  };
+
+  const renderItemHandler = ({ item: tweet }) => {
     return (
       <View style={styles.tweetContainer}>
-        <TouchableOpacity onPress={() => goToTweetScreen()}>
+        <TouchableOpacity onPress={() => goToTweetScreen(tweet.user.id)}>
           <Image
             style={styles.avatar}
-            source={{
-              uri: "https://reactnative.dev/img/tiny_logo.png",
-            }}
+            source={{ uri: tweet.user && tweet.user.avatar }}
           />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -40,22 +97,23 @@ function HomeScreen({ navigation }) {
             onPress={() => goToTweetScreen()}
           >
             <Text numberOfLines={1} style={styles.tweetName}>
-              {item.title}
+              {tweet.user && tweet.user.name}
             </Text>
             <Text numberOfLines={1} style={styles.tweetHandle}>
-              @Aboki4code
+              {"@" + (tweet.user && tweet.user.username)}
             </Text>
             <Text>&middot;</Text>
             <Text numberOfLines={1} style={styles.tweetHandle}>
-              9m
+              {formatDistanceToNowStrict(new Date(tweet.created_at), {
+                locale: {
+                  ...locale,
+                  formatDistance,
+                },
+              })}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity>
-            <Text style={styles.alignment}>
-              Used to truncate the text with an ellipsis after computing the
-              text layout, including line wrapping, such that the total number
-              of lines does not exceed this number.
-            </Text>
+            <Text style={styles.alignment}>{tweet.body}</Text>
           </TouchableOpacity>
           <View style={styles.tweetEngagement}>
             <TouchableOpacity style={styles.flexRow}>
@@ -102,14 +160,25 @@ function HomeScreen({ navigation }) {
   };
   return (
     <View style={styles.root}>
-      <FlatList
-        data={DATA}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItemHandler}
-        ItemSeparatorComponent={() => (
-          <View style={styles.tweetSeperator}></View>
-        )}
-      />
+      {isLoading ? (
+        <ActivityIndicator size="large" color="gray" />
+      ) : (
+        <FlatList
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          onEndReached={handleEnd}
+          onEndReachedThreshold={0.3}
+          data={data}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItemHandler}
+          ListFooterComponent={() => (
+            <ActivityIndicator size="large" color="gray" />
+          )}
+          ItemSeparatorComponent={() =>
+            !isScrollEnd && <View style={styles.tweetSeperator}></View>
+          }
+        />
+      )}
       <TouchableOpacity
         style={styles.floatingButton}
         onPress={() => goToNewTweet()}
